@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum DisposalMethod {
+  Recycling
+  Composting
+  Reuse
+  Landfill
+  Incineration
+  Other
+}
+
+enum Source {
+  Residential
+  Commercial
+  Industrial
+  Institutional
+  College
+  Municipal
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  users     User[]
+  locations Location[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id             String       @id @default(cuid())
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           Role         @default(VIEWER)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  wasteRecords   WasteRecord[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Location {
+  id             String       @id @default(cuid())
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  wasteRecords   WasteRecord[]
+  @@index([organizationId, name])
+}
+
+model WasteCategory {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  description    String
+  recyclable     Boolean
+  compostable    Boolean
+  hazardous      Boolean
+  emissionFactor Float
+  disposalMethod DisposalMethod
+  wasteRecords   WasteRecord[]
+}
+
+model WasteRecord {
+  id             String         @id @default(cuid())
+  date           DateTime
+  location       Location       @relation(fields: [locationId], references: [id])
+  locationId     String
+  category       WasteCategory  @relation(fields: [categoryId], references: [id])
+  categoryId     String
+  quantityKg     Float
+  source         Source
+  disposalMethod DisposalMethod
+  recyclable     Boolean
+  notes          String?
+  createdBy      User?          @relation(fields: [createdById], references: [id])
+  createdById    String?
+  dataset        Dataset?       @relation(fields: [datasetId], references: [id])
+  datasetId      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  @@index([date])
+  @@index([locationId, categoryId])
+}
+
+model Dataset {
+  id          String        @id @default(cuid())
+  name        String
+  rows        Int
+  dateFrom    DateTime?
+  dateTo      DateTime?
+  qualityJson Json
+  records     WasteRecord[]
+  createdAt   DateTime      @default(now())
+}
+
+model Prediction {
+  id        String   @id @default(cuid())
+  horizon   Int
+  target    String
+  value     Float
+  metrics   Json
+  createdAt DateTime @default(now())
+}
+
+model Recommendation {
+  id              String   @id @default(cuid())
+  priority        Priority
+  problem         String
+  action          String
+  expectedBenefit String
+  category        String
+  createdAt       DateTime @default(now())
+}
+
+model EnvironmentalImpact {
+  id                String   @id @default(cuid())
+  period            String
+  totalWaste        Float
+  co2Emissions      Float
+  co2Avoided        Float
+  landfillDiversion Float
+  createdAt         DateTime @default(now())
+}
+
+model Scenario {
+  id        String   @id @default(cuid())
+  inputs    Json
+  result    Json
+  createdAt DateTime @default(now())
+}
